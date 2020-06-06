@@ -2,7 +2,10 @@ package io.lindstrom.m3u8.parser;
 
 import io.lindstrom.m3u8.model.MediaSegment;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.OffsetDateTime;
+import java.util.Locale;
 
 enum MediaSegmentTag implements Tag<MediaSegment, MediaSegment.Builder> {
     EXT_X_DISCONTINUITY {
@@ -56,6 +59,12 @@ enum MediaSegmentTag implements Tag<MediaSegment, MediaSegment.Builder> {
     },
 
     EXTINF {
+        private final ThreadLocal<DecimalFormat> formatter = ThreadLocal.withInitial(() -> {
+            DecimalFormat format = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
+            format.setMaximumFractionDigits(340);
+            return format;
+        });
+
         @Override
         public void read(MediaSegment.Builder builder, String attributes) {
             int p = attributes.indexOf(',');
@@ -73,7 +82,9 @@ enum MediaSegmentTag implements Tag<MediaSegment, MediaSegment.Builder> {
 
         @Override
         public void write(MediaSegment mediaSegment, TextBuilder textBuilder) {
-            textBuilder.add('#').add(tag()).add(":").add(mediaSegment.duration()).add(",");
+            textBuilder.add('#').add(tag()).add(":")
+                    .add(formatter.get().format(mediaSegment.duration()))
+                    .add(",");
             mediaSegment.title().ifPresent(textBuilder::add);
             textBuilder.add('\n');
         }
